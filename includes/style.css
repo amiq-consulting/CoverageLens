@@ -1,0 +1,66 @@
+  table {
+  	font-family: arial, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+    display: inline-block;
+  }
+
+  td, th {
+    border: 1px solid #000000;
+    text-align: center;
+  	padding: 8px;
+  }
+
+  tr .tooltip {
+	z-index:10;
+    display:none; 
+    padding:14px 20px;
+    margin-top:-15px;
+    margin-left:28px;
+    width:300px;
+    line-height:16px;
+  }
+
+  tr:hover .tooltip {
+  	display:inline-block;
+	position:absolute;
+    color:#111111;
+    border:1px solid #DCA;
+    background:#fffaf0;
+    text-align:center;
+  }
+  
+  .topcorner{
+  	font-size:40px;
+   	position:absolute;
+   	top:+5px;
+   	right:+5px;
+  }
+  
+  .title {
+  
+  }
+  
+  .header {
+  
+  }
+  
+  .fail {
+  	background:#C70039;
+  }
+  
+  .missing {
+  	background:#F600FE; 
+  }
+  
+  .more_than_1000 {
+  	    background:#F600FE;
+  }
+  
+  .default {
+  	background:#FFFFFF; 
+  }
+  
+    
+  
+  

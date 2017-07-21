@@ -1,0 +1,5 @@
+cl_check -k inst -p /top/pkt_trans -l 333 -t expr 1	
+cl_check -k inst -p /top/pkt_trans/pkt2mac/mac_req_if -t trans state IDLE->WAIT
+cl_check -k inst -p /top/pkt_trans/pkt2mac/mac_req_if -t state state SENT
+cl_check -k inst -p /top/pkt_trans -l 332 -t stmt
+

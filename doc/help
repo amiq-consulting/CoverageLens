@@ -1,0 +1,59 @@
+BUILD
+CL currently works with NCSim and Questa. The executable will be different depending on the tool used to simulate, so you need to specify the vendor when compiling:
+
+./compile.sh {cadence|mentor} {path_to_simulator}
+
+The path is necessary only for the first compilation, in order to link the UCIS implementation.
+
+RUN
+Run by using the run.sh script.
+CL supports a number of runtime parameters:
+1) Passing files:
+--file, -f # file with other arguments, one per line 
+--check-file, -c  # check file containing code to be analyzed
+--database, -d  # UCISDB (.ucdb or .ucd)
+--plan, -p # vPlan
+--refinement, -r # waiver file (.vpRefine or .do)
+
+2) Filtering checks:
+--strict-comment, -sc # consider only checks marked with an exact comment
+--weak-comment, -wc # consider only checks that contain a string in comment 
+--users, -u # consider only checks made by some user
+
+3) Other:
+--mail, -m  # send html report for a run
+--verbose, -v # create debug files
+--output, -o # change result file name
+--list, -l  # find an instance in the DB. If no arg is given prints whole hierarchy
+--testname, -t # pass testname 
+--quiet, -q   # run in batch mode
+--negate, -n  # switch all checks 
+
+CHECK-FILE
+Check files are the way CL knows what code you want to look at. These consist of several "check" commands that describe code coverage items (type, location) and their kind (per instance/ per type).
+
+cl_check -k {inst|type} -s {hierarchical_location} -l {line_numeber} -t {code_type} [other descriptors]
+
+By default, items pass the check if they were executed at least once.
+Note: brackets mean mandatory and square parentheses mean optional;
+Examples:
+
+#Check a statement from line 42, in all "pkt_transmitter" instances
+cl_check -k type -s pkt_transmitter -l 42 -t stmt
+#Check that a statement from line 42, in all "pkt_transmitter" instances is not covered
+cl_check -k type -s pkt_transmitter -l 42 -t stmt -n
+#Check all configurations for an expression from line 42, in all "pkt_transmitter" instances
+cl_check -k type -s pkt_transmitter -l 42 -t expr
+#Check first 3 table rows for an expression from line 42, in all "pkt_transmitter" instances
+cl_check -k type -s pkt_transmitter -l 42 -t expr 1 2 3
+#Check state "IDLE" from the "trans_fsm" FSM, in all "pkt_transmitter" instances
+cl_check -k type -s pkt_transmitter -t state trans_fsm IDLE
+#Check transition "IDLE->RESET" from the "trans_fsm" FSM, in all "pkt_transmitter" instances
+cl_check -k type -s pkt_transmitter -t state trans_fsm IDLE->RESET
+
+#Check all statement from line 42 to 55, in all "pkt_transmitter" instances
+cl_check -k type -s pkt_transmitter -l 42-55 -t stmt
+
+#Check a statement from line 42, in two specific "pkt_transmitter" instances: pkt_transmitter{1,2}
+cl_check -k inst -s top/tx1/pkt_transmitter1 -l 42 -t stmt
+cl_check -k inst -s top/tx1/pkt_transmitter2 -l 42 -t stmt
