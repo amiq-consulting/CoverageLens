@@ -1,10 +1,8 @@
-NC_INST_DIR=/some_path/INCISIV_some_version/
-QUESTA_INST_DIR=/some_path/questasim/
+NC_INST_DIR=
+QUESTA_INST_DIR=
 
 NCSIM_LIB_PATH = $(NC_INST_DIR)/tools/lib
 QUESTA_LIB_PATH = $(QUESTA_INST_DIR)/linux_x86_64
-
-CDNS_OPT     = `[ \`ncbits\` = 32 -a \`uname -m\` = x86_64 ] && echo -m32 || echo` -g
 
 NCSIM_INCLUDES = -I ${NC_INST_DIR}/tools/include/
 NCSIM_LINKS    = -L ${NCSIM_LIB_PATH} -lucis -lcdsCommon_sh -ldl
@@ -63,4 +61,4 @@ rmdoc:
 	@rm -rf ./doc/doc
 
 clean:
-	@rm -rf $(EXEC) *.log *.o ./build cl_report.html
+	@rm -rf $(EXEC) *.log *.o ./build cl_report.html cl_report

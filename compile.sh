@@ -1,6 +1,6 @@
 #!/bin/bash
-OLD_RUN=cdns
-
+OLD_RUN=
+ARCH=
 COMP=g++
 
 if [ $# -lt 1 ]; then
@@ -21,12 +21,13 @@ if [ "$1" == "cadence" ]; then
 
 	if [ $# -eq 2 ]; then
 		sed -i "1s|.*|"NC_INST_DIR=$2"|" Makefile;
+		ARCH=`readlink $2/tools/lib/libucis.so -f | xargs file | grep 32-bit &>/dev/null && echo "-m32"`
 	fi
 	
-	make -f Makefile link_cdns VENDOR=NCSIM CC="$COMP \${CDNS_OPT}"
+	make -f Makefile link_cdns VENDOR=NCSIM CC="$COMP $ARCH"
 	
 	sed -i "2s/.*/"OLD_RUN=cdns"/" $0;
-	
+	sed -i "3s/.*/"ARCH=$ARCH"/" $0;
 	
 	
 elif [ "$1" == "mentor" ]; then
@@ -37,6 +38,7 @@ elif [ "$1" == "mentor" ]; then
 	
 	if [ $# -eq 2 ]; then
 		sed -i "2s|.*|"QUESTA_INST_DIR=$2"|" Makefile;
+		ARCH=`readlink $2/linux_x86_64/libucis.so -f | xargs file | grep 32-bit &>/dev/null && echo "-m32"`
 	fi
 	
 	make link_mti VENDOR=QUESTA CC=$COMP;
@@ -44,5 +46,5 @@ elif [ "$1" == "mentor" ]; then
 	sed -i "2s/.*/"OLD_RUN=mti"/" $0;
 
 else
-	echo "Usage: ./compile.sh [mentor|cadence]";
+	echo "Usage: ./compile.sh {mentor|cadence} [path_to_vendor_install]";
 fi

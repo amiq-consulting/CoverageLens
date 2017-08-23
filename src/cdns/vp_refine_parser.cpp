@@ -105,6 +105,25 @@ string get_field(string line, string field) {
   return field_value;
 }
 
+string read_rule(std::ifstream &vp_ref) {
+
+  string new_rule;
+
+  string buff;
+
+  while (1) {
+    getline(vp_ref, buff);
+    line_number++;
+
+    new_rule += buff;
+
+    if (buff.find("/&gt;") != string::npos)
+      break;
+  }
+
+  return new_rule;
+}
+
 /**
  *  @brief Parses an exclusion, found between a <rule>...</rule>
  *  @param vp_ref Exclusion file input stream
@@ -123,11 +142,13 @@ void parse_rules(std::ifstream &vp_ref, top_tree* &excl_tree, const filters_t& f
   // Each user gets paired with an int id
   map<string, int> users;
 
-  getline(vp_ref, line);
-  line_number++;
+//  getline(vp_ref, line);
+//  line_number++;
+  line = read_rule(vp_ref);
 
   // Start reading line by line
   while (1) {
+
     if (line.find("&lt;/rules&gt;") != string::npos) {
       debug_log << "Reached end of rules @ " << line_number << ". All good!\n";
       break;
@@ -141,8 +162,10 @@ void parse_rules(std::ifstream &vp_ref, top_tree* &excl_tree, const filters_t& f
       accumulator = accumulator & fil.comment_workers[i]->run_check(comment);
 
     if (!accumulator) {
-      getline(vp_ref, line);
-      line_number++;
+//      getline(vp_ref, line);
+//      line_number++;
+      line = read_rule(vp_ref);
+
       continue;
     }
 
@@ -250,8 +273,10 @@ void parse_rules(std::ifstream &vp_ref, top_tree* &excl_tree, const filters_t& f
     debug_log << "Found exclusion [" << new_type << ":" << new_top + "/" + new_path + "/" << "] "
         << "by user: " << key << " @" << line_number << "! All good\n";
 
-    getline(vp_ref, line);
-    line_number++;
+//    getline(vp_ref, line);
+//    line_number++;
+    line = read_rule(vp_ref);
+
   }
 
   // Look for where the users are stored

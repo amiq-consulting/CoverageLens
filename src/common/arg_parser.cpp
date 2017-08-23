@@ -379,6 +379,13 @@ int arg_main(int argc, char** argv, vector<vector<string> > &infos) {
     return 3;
   }
 
+#ifdef NCSIM
+  if (!infos['r' - 'a'].empty() && infos['p' - 'a'].empty()) {
+      semantic_err("Can't specify a refinement without a vPlan!");
+      return 3;
+    }
+#endif
+
   // This checks that you're not using strict comment filtering with weak filtering
   if (!infos['s' - 'a'].empty() && !infos['w' - 'a'].empty()) {
     semantic_err("Can't enable both comment flags at once!");

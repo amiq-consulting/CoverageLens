@@ -202,22 +202,10 @@ int it_main(int argc, char* argv[]) {
   if (!silent) {
 
     reporter_html r(out_prefix + ".html");
-//    if (!arguments['o' - 'a'].empty()) {
-//      r = new reporter_html(arguments['o' - 'a'][0] + ".html", false);
-//    } else {
-//      r = new reporter_html("cl_report.html", false);
-//    }
-
     excl_trie->gen_report(r, chk);
   }
 
   reporter_log log(out_prefix);
-
-//  if (!arguments['o' - 'a'].empty()) {
-//    log = new reporter_log(arguments['o' - 'a'][0]);
-//  } else {
-//    log = new reporter_log("cl_report.log");
-//  }
 
   excl_trie->gen_report(log, chk);
 
