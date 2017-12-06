@@ -1,5 +1,38 @@
-cl_check -k inst -p /top/pkt_trans -l 333 -t expr 1	
-cl_check -k inst -p /top/pkt_trans/pkt2mac/mac_req_if -t trans state IDLE->WAIT
-cl_check -k inst -p /top/pkt_trans/pkt2mac/mac_req_if -t state state SENT
-cl_check -k inst -p /top/pkt_trans -l 332 -t stmt
+#Examples
 
+#Check a statement from line 42, in all "pkt_transmitter" instances
+cl_check -k type -s pkt_transmitter -l 42 -t stmt
+
+#Check that a statement from line 42, in all "pkt_transmitter" instances is not covered
+cl_check -k type -s pkt_transmitter -l 42 -t stmt -n
+
+#Check all configurations for an expression from line 42, in all "pkt_transmitter" instances
+cl_check -k type -s pkt_transmitter -l 42 -t expr
+
+#Check first 3 table rows for an expression from line 42, in all "pkt_transmitter" instances
+cl_check -k type -s pkt_transmitter -l 42 -t expr 1 2 3
+
+#Check state "IDLE" from the "trans_fsm" FSM, in all "pkt_transmitter" instances
+cl_check -k type -s pkt_transmitter -t state trans_fsm IDLE
+
+#Check transition "IDLE->RESET" from the "trans_fsm" FSM, in all "pkt_transmitter" instances
+cl_check -k type -s pkt_transmitter -t state trans_fsm IDLE->RESET
+
+#Check all statement from line 42 to 55, in all "pkt_transmitter" instances
+cl_check -k type -s pkt_transmitter -l 42-55 -t stmt
+
+#Check a statement from line 42, in two specific "pkt_transmitter" instances: pkt_transmitter{1,2}
+cl_check -k inst -s top/tx1/pkt_transmitter1 -l 42 -t stmt
+cl_check -k inst -s top/tx1/pkt_transmitter2 -l 42 -t stmt
+
+#Check if an assert failed or not
+cl_check -k inst -p pkg/monitor -t assert ASSERT_NAME
+
+#Check if a coverage bin was covered
+cl_check -k inst -p pkg/cov_collector -t cov /covergroup/coverpoint/bin_name
+
+#Check if a bin from a bin array was covered
+cl_check -k inst -p pkg/cov_collector -t cov /covergroup/coverpoint/array_bin 3
+
+#Check if a cross bin was covered
+cl_check -f inst -p pkg/cov_collector -t cov /covergroup/cross_name 72

@@ -4,6 +4,7 @@ Coverage Lens is an utility (written in C++) that looks for a specified set of R
 CL can be used to check that:
 * Directed scenarios hit their target in the DUT
 * Excluded code is not executed
+* Bins of coverage are covered and assertions are failing or not
 
 ### Installation
 CL currently works with NCSim and Questa. The executable will be different depending on the tool used to simulate, so you need to specify the vendor when compiling:
@@ -39,6 +40,7 @@ Other:
 --testname, -t # pass testname 
 --quiet, -q   # run in batch mode
 --negate, -n  # switch all checks 
+--coverage, -g # functional coverage information
 ```
 
 ### Creating a check file
@@ -70,6 +72,14 @@ cl_check -k type -s pkt_transmitter -l 42-55 -t stmt
 #Check a statement from line 42, in two specific "pkt_transmitter" instances: pkt_transmitter{1,2}
 cl_check -k inst -s top/tx1/pkt_transmitter1 -l 42 -t stmt
 cl_check -k inst -s top/tx1/pkt_transmitter2 -l 42 -t stmt
+
+#Check if an assert failed or not
+cl_check -k inst -p pkg/monitor -t assert ASSERT_NAME
+
+#Check if a coverage bin was covered
+cl_check -k inst -p pkg/cov_collector -t cov /covergroup/coverpoint/bin_name
+cl_check -k inst -p pkg/cov_collector -t cov /covergroup/coverpoint/array_bin 3
+cl_check -f inst -p pkg/cov_collector -t cov /covergroup/cross_name 72
 ```
 
 ### Jumpstart
@@ -109,3 +119,34 @@ UCISDB #0 @tests/mti/top.ucdb
 /top/pkt_trans/hs_tx_data_fifo/memory
 /top/pkt_trans/hs_tx_size_fifo/memory
 ```
+### Functional coverage examples
+./coverage_lens.sh -d <path_to_database> -g nof_cvps
+This option will print out the total number of coverpoints from the verification environment.
+
+./coverage_lens.sh -d <path_to_database> -g cvp_name <cvp_idx>
+Based on the index of the covergroup (the index must be in the range [1, nof_cvps]), the path to the coverpoint 
+will be printed out (the path includes the packages, the class name and the covergroup).
+
+./coverage_lens.sh -d <path_to_database> -g nof_bins <cvp_idx>
+Given the index of the coverpoint, this parameter will print out the number of bins which contributed to the coverpoint.
+
+./coverage_lens.sh -d <path_to_database> -g bin_name <cvp_idx> <bin_idx>
+This option will print out the full path to the bin (including the packages and the classes) that has the bin_idx index
+from the coverpoint with the cvp_idx index.
+
+./coverage_lens.sh <path_to_database> -g nof_hits <cvp_idx> <bin_idx>
+This option will print out the number of hits of the bin with the bin_idx index from the coverpoint with the index cvp_idx.
+
+./coverage_lens.sh <path_to_database> -g cvp_res <cvp_idx>
+This option, with the index of the coverpoint as a parameter will show the percentage of the bins that have been
+hit from the coverpoint.
+
+./coverage_lens.sh <path_to_database> -g  nof_cvgs
+This options takes no parameters and prints the total number of covergroups from the verification environment.
+
+./coverage_lens.sh <path_to_database> -g cvg_name <cvg_idx>
+Similar to the cvp_name option, this option will print the full path to the covergroup with the cvg_idx index.
+
+./coverage_lens.sh <path_to_database> -g cvg_res <cvg_idx>
+This option gets the index of the covergroup as a parameter and prints the percentage of hit bins from the covergroup.
+

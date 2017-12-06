@@ -67,7 +67,7 @@ public:
 
   virtual void format_default(const node_info_t&) {};
   virtual void format_fail(const node_info_t&) {};
-
+  virtual void format_missing(const node_info_t&) {};
   virtual ~reporter() {
     report.close();
   };
@@ -129,10 +129,12 @@ public:
   void format(const node_info_t&, const string &class_name);
 
   void format_default(const node_info_t&) {};
-  void format_fail(const node_info_t&);
+  void format_fail(const node_info_t&, const string &class_name);
+
 
   string get_string_kind();
-  string assemble_info(const node_info_t&);
+  string assemble_info(const node_info_t&, const string &class_name);
+
 };
 
 #endif  // INCLUDES_FORMATTER_HPP_

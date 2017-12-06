@@ -460,6 +460,12 @@ void assemble_command(map<string, vector<string>> cmd, top_tree* &excl_tree, int
       case 'e':
         inf.type = "Expression";
         break;
+      case 'a':
+        inf.type = "Assertbin";
+        break;
+      case 'v':
+        inf.type = "Coverbin";
+        break;
       default:
         break;
       }

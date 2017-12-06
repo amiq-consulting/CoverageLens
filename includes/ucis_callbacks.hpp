@@ -53,6 +53,11 @@ ucisCBReturnT search_callback(void* userdata, ucisCBDataT* cbdata);
  */
 ucisCBReturnT map_callback(void* userdata, ucisCBDataT* cbdata);
 
+/*
+ * @brief Callback that implementes functional coverage utilities
+ */
+ucisCBReturnT functional_callback(void* userdata, ucisCBDataT* cbdata);
+
 /**
  * @brief Iterates over the UCISDB using the given function
  * @param db_file Path to the UCISDB

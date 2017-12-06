@@ -1,5 +1,5 @@
-NC_INST_DIR=
-QUESTA_INST_DIR=
+NC_INST_DIR=/apps/cadence/INCISIV_15.20.006/
+QUESTA_INST_DIR=/apps/mentor/10.6b-64bit/questasim/
 
 NCSIM_LIB_PATH = $(NC_INST_DIR)/tools/lib
 QUESTA_LIB_PATH = $(QUESTA_INST_DIR)/linux_x86_64

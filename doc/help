@@ -57,3 +57,8 @@ cl_check -k type -s pkt_transmitter -l 42-55 -t stmt
 #Check a statement from line 42, in two specific "pkt_transmitter" instances: pkt_transmitter{1,2}
 cl_check -k inst -s top/tx1/pkt_transmitter1 -l 42 -t stmt
 cl_check -k inst -s top/tx1/pkt_transmitter2 -l 42 -t stmt
+
+#Check if a coverage bin was covered
+cl_check -k inst -p pkg/cov_collector -t cov /covergroup/coverpoint/bin_name
+cl_check -k inst -p pkg/cov_collector -t cov /covergroup/coverpoint/array_bin 3
+cl_check -f inst -p pkg/cov_collector -t cov /covergroup/cross_name 72

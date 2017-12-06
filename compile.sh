@@ -1,7 +1,8 @@
 #!/bin/bash
-OLD_RUN=
-ARCH=
-COMP=g++
+OLD_RUN=cdns
+ARCH=-m32
+#COMP=g++
+COMP=/apps/cadence/XCELIUM_16.11.001/tools/systemc/gcc/4.8/bin/g++
 
 if [ $# -lt 1 ]; then
 	echo "Usage: ./compile.sh {mentor|cadence} [path_to_vendor_install]";

@@ -29,8 +29,15 @@ static string __default_checker(node_info_t inf) {
   if (!inf.found)
     return "missing";
 
-  if (inf.hit_count == 0)
-    return "fail";
+  if (inf.type != "Assertbin") {
+    if (inf.hit_count == 0)
+      return "fail";
+    return "default";
+  } else {
+    if (inf.hit_count > 0)
+      return "fail";
+    return "default";
+  }
 
   return "default";
 
@@ -91,6 +98,34 @@ int it_main(int argc, char* argv[]) {
 
   ucis_RegisterErrorHandler(error_handler, NULL);
 
+  // Functional coverage details
+  if (arguments['g' - 'a'].size()) {
+
+    // Get a struct dustate to look only at instances
+    struct dustate *du_g = (struct dustate *) malloc(sizeof(struct dustate));
+    char **data = (char **) calloc(4, sizeof(char *));
+
+    // Pass -g arguments to callback
+    for (int i = 0; i < arguments['g' - 'a'].size(); i++) {
+      data[i] = (char *) arguments['g' - 'a'][i].c_str();
+    }
+
+    data[3] = (char *) du_g;
+
+    // Iterate over given UCISDBs
+    for (int i = 0; i < arguments['d' - 'a'].size(); ++i) {
+      cout << "UCISDB #" << i << " @" << arguments['d' - 'a'][i] << "\n";
+      iterate_db(arguments['d' - 'a'][i], functional_callback, (void *) data);
+    }
+
+//    std::cout << "[" << *((uint64_t*)data)[4] << "]\n";
+
+    free(data);
+    free(du_g);
+
+    return 0;
+  }
+
   // List option
   if (arguments['l' - 'a'].size()) {
 
@@ -103,7 +138,6 @@ int it_main(int argc, char* argv[]) {
     return 0;
   }
 
-
   // Used to see what's of interest in a plan
   unordered_map<string, char> folders;
 
@@ -113,7 +147,7 @@ int it_main(int argc, char* argv[]) {
     err = plan_parser_main(arguments['p' - 'a'][0], folders, debug, silent);
     // Errors while parsing the plan file
     if (err != 0)
-      return err;
+    return err;
   }
 #endif
 
@@ -171,8 +205,8 @@ int it_main(int argc, char* argv[]) {
     iterate_db(arguments['d' - 'a'][i], search_callback, (void *) data);
   }
 
-  free(data);
   free(du);
+  free(data);
 
   // Raw results file
   if (debug) {
@@ -194,7 +228,7 @@ int it_main(int argc, char* argv[]) {
 
   string out_prefix;
 
-  if(!arguments['o' - 'a'].empty())
+  if (!arguments['o' - 'a'].empty())
     out_prefix = arguments['o' - 'a'][0];
   else
     out_prefix = "cl_report";
@@ -209,8 +243,6 @@ int it_main(int argc, char* argv[]) {
 
   excl_trie->gen_report(log, chk);
 
-
-
   delete excl_trie;
 
   for (auto it = comment_workers.begin(); it != comment_workers.end(); it++) {
@@ -218,7 +250,6 @@ int it_main(int argc, char* argv[]) {
   }
 
   comment_workers.clear();
-
 
   if (!silent)
     cout << "Iterator finished successfully!\n";

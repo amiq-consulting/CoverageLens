@@ -67,6 +67,28 @@ vector<int> get_lines(const vector<string> &lines, bool &expanded) {
 }
 
 /**
+ * @brief Gets a path and return the number of parameters (between '/')
+ * @param path The string in which we search
+ * @param sep The separator that delimitates the parameters
+ */
+int get_num_params(string path, string sep)
+{
+  int pos, count = 1;
+
+  while (1) {
+    pos = path.find(sep);
+
+    if (pos != std::string::npos) {
+      path = path.substr(pos + sep.length());
+      if (path != "")
+        count++;
+    } else {
+      return count;
+    }
+  }
+}
+
+/**
  *  @brief Stores a check command
  *  @param excl_tree Tree that stores checks
  *  @param cmd A check command
@@ -174,39 +196,79 @@ void add_command(top_tree* &excl_tree, map<string, vector<string>> cmd, int inde
       }
     }
     break;
-  case 'c':               // "cond"
+  case 'c':               // "cond" or "cov"
   case 'e':               // "expr"
   {
 
-    if (type[0] == 'c')
-      inf.type = "Condition";
+    if (type[0] == 'c'){
+      if (type[2] == 'n')
+        inf.type = "Condition";
+      else
+        inf.type = "Coverbin";
+    }
     else
       inf.type = "Expression";
 
-    vector<string> aux(opt.begin() + 1, opt.end());
+    if (type[2] != 'v') {
+      vector<string> aux(opt.begin() + 1, opt.end());
 
-    vector<int> minterms = get_lines(aux, expanded);
+      vector<int> minterms = get_lines(aux, expanded);
 
-    if (linerange.empty()) {        // Every expr/cond
-      PRINT_LINE(query + "X/");
-      excl_tree->add(query + "X/", query_t, inf, expanded);
-    } else {
-      // Specific expr/cond
-      for (int i = 0; i < linerange.size(); ++i) {
-        string aux_query = query + to_string(linerange[i]) + "/";
+      if (linerange.empty()) {        // Every expr/cond
+        PRINT_LINE(query + "X/");
+        excl_tree->add(query + "X/", query_t, inf, expanded);
+      } else {
+        // Specific expr/cond
+        for (int i = 0; i < linerange.size(); ++i) {
+          string aux_query = query + to_string(linerange[i]) + "/";
 
-        if (minterms.empty()) {
-          PRINT_LINE(aux_query + "X/");
-          excl_tree->add(aux_query + "X/", query_t, inf, expanded);
-        } else {
+          if (minterms.empty()) {
+            PRINT_LINE(aux_query + "X/");
+            excl_tree->add(aux_query + "X/", query_t, inf, expanded);
+          } else {
 
-          for (int j = 0; j < minterms.size(); ++j) {
-            PRINT_LINE(aux_query + to_string(minterms[i]) + "/m/");
-            excl_tree->add(aux_query + to_string(minterms[i]) + "/m/", query_t, inf, expanded);
+            for (int j = 0; j < minterms.size(); ++j) {
+              PRINT_LINE(aux_query + to_string(minterms[i]) + "/m/");
+              excl_tree->add(aux_query + to_string(minterms[i]) + "/m/", query_t, inf, expanded);
+            }
           }
         }
       }
+    } else { //coverbin
+      string path = opt[1];
+      string index = to_string(0);
+      int num_params;
+
+      if (opt.size() > 2)
+        index = opt[2];
+
+      if (path[0] == '/')
+        path = path.substr(1);
+
+      num_params = get_num_params(path, "/");
+      if (num_params == 2) {
+        path += "/auto";
+      }
+
+      inf.name = path;
+
+      PRINT_LINE(query + path + "/" + index + "/v/");
+      excl_tree->add(query + path + "/" + index + "/v/", query_t, inf, expanded);
     }
+    break;
+  }
+  case 'a':   // assert
+  {
+    inf.type = "Assertbin";
+
+    string path = opt[1];
+    if (path[0] == '/')
+      path = path.substr(1);
+    inf.name = path;
+
+    PRINT_LINE(query + path + "/a/");
+    excl_tree->add(query + path + "/a/", query_t, inf, expanded);
+
     break;
   }
   case 't':               // "trans"

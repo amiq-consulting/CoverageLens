@@ -5,7 +5,11 @@
  *      Author: teovas
  */
 
+#include <vector>
 #include "ucis_callbacks.hpp"
+
+#include <string>
+using std::to_string;
 
 static bool refinement_flag;
 
@@ -192,6 +196,12 @@ ucisCBReturnT search_callback(void* userdata, ucisCBDataT* cbdata) {
   char* name;
   ucisCoverDataT coverdata;
   ucisSourceInfoT sourceinfo;
+  static std::vector<string> cvg_queries;
+  static int num_crt;
+
+  /* Initialize the number of coverage bins so far */
+  if (cvg_queries.size() == 0)
+    num_crt = 0;
 
   /*
    * Extract userdata:
@@ -240,21 +250,60 @@ ucisCBReturnT search_callback(void* userdata, ucisCBDataT* cbdata) {
     /* Get coveritem data from scope and coverindex passed in: */
     ucis_GetCoverData(db, scope, cbdata->coverindex, &name, &coverdata, &sourceinfo);
 
-    if (!(coverdata.type & UCIS_CODE_COV))
+    if (!(coverdata.type & UCIS_CODE_COV || coverdata.type == UCIS_CVGBIN
+        || coverdata.type == UCIS_ASSERTBIN))
       return UCIS_SCAN_CONTINUE;
 
     if (coverdata.type == UCIS_TOGGLEBIN)
       return UCIS_SCAN_CONTINUE;
 
     if (name != NULL && name[0] != '\0') {
-//#define QUESTA
-//#define NCSIM
-#ifdef QUESTA
 
+#ifdef QUESTA
 // Questa needs all the data
       {
         node_info_t inf;
         vector < string > queries = get_query_array(cbdata, sourceinfo, coverdata, name, inf);
+
+        if (coverdata.type == UCIS_CVGBIN) {
+          inf.type = "Coverbin";
+
+          if (queries[0] != "") {
+            cvg_queries.push_back(queries[0]);
+
+            /* There are at least 2 elements in the vector */
+            if (cvg_queries.size() > 1) {
+              int n = cvg_queries.size();
+              if (cvg_queries[n - 1].compare(cvg_queries[n - 2]) == 0)
+              num_crt ++; // another element of a vector bin
+              else
+              num_crt = 0;// new bin
+            }
+
+            /* Add the index to the query */
+            queries[0] = queries[0].substr(0, queries[0].length() - 3);
+            queries[0] += "/" + to_string(num_crt);
+            queries[0] += "/v/";
+
+            inf.name = queries[0].substr(queries[0].find("/") + 1);
+            inf.name = inf.name.substr(inf.name.find('/') + 1);
+
+            inf.name = inf.name.substr(0, inf.name.find_last_of("/") - 1);
+            inf.name = inf.name.substr(0, inf.name.find_last_of("/") - 1);
+            inf.name = inf.name.substr(0, inf.name.find_last_of("/"));
+          }
+
+        }
+
+        if (coverdata.type == UCIS_ASSERTBIN) {
+          inf.type = "Assertbin";
+
+          inf.name = queries[0].substr(queries[0].find("/") + 1);
+          inf.name = inf.name.substr(inf.name.find('/') + 1);
+
+          inf.name = inf.name.substr(0, inf.name.find_last_of("/") - 1);
+          inf.name = inf.name.substr(0, inf.name.find_last_of("/"));
+        }
 
         excl_trie->run_check(queries, static_cast<long int>(coverdata.data.int64), inf);
       }
@@ -273,9 +322,9 @@ ucisCBReturnT search_callback(void* userdata, ucisCBDataT* cbdata) {
 
         // Minor optimisation to determine which tree to search in
         if (du->underneath)
-          select = 2;
+        select = 2;
         else
-          select = 1;
+        select = 1;
 
         // Get our query
         string query = get_query(cbdata, coverdata, name, reset, inf, refinement_flag);
@@ -288,10 +337,33 @@ ucisCBReturnT search_callback(void* userdata, ucisCBDataT* cbdata) {
         }
 
         switch (coverdata.type) {
-        // Blocks need ordering
-        case UCIS_BLOCKBIN:
-        case UCIS_BRANCHBIN:
-        case UCIS_STMTBIN:
+          // Blocks need ordering
+          case UCIS_CVGBIN:
+          cvg_queries.push_back(query);
+
+          /* There are at least 2 elements in the vector */
+          if (cvg_queries.size() > 1) {
+            int n = cvg_queries.size();
+            if (cvg_queries[n - 1].compare(cvg_queries[n - 2]) == 0)
+            num_crt ++; // another element of a vector bin
+            else
+            num_crt = 0;// new bin
+          }
+
+          /* Add the index to the query */
+          query = query.substr(0, query.length() - 3);
+          query += "/" + to_string(num_crt);
+          query += "/v/";
+          case UCIS_ASSERTBIN:
+          if (query[0] == '/')
+          query = query.substr(1);
+
+          excl_trie->run_check(query, static_cast<long int>(coverdata.data.int64), inf, 1);
+
+          break;
+          case UCIS_BLOCKBIN:
+          case UCIS_BRANCHBIN:
+          case UCIS_STMTBIN:
           // Store the info to order them later
           if (refinement_flag) {
             blocks.push_back(
@@ -300,15 +372,14 @@ ucisCBReturnT search_callback(void* userdata, ucisCBDataT* cbdata) {
             break;
           }
 
-        // Else : send them to the exclusion tree directly
-        case UCIS_EXPRBIN:
-        case UCIS_CONDBIN:
-        case UCIS_FSMBIN:
-
+          // Else : send them to the exclusion tree directly
+          case UCIS_EXPRBIN:
+          case UCIS_CONDBIN:
+          case UCIS_FSMBIN:
           excl_trie->run_check(query, static_cast<long int>(coverdata.data.int64), inf, select);
           break;
 
-        default:
+          default:
           break;
         }
       }
@@ -326,6 +397,261 @@ ucisCBReturnT search_callback(void* userdata, ucisCBDataT* cbdata) {
 
 }
 
+/**
+ * @brief Callback that returns different information for functional coverage
+ */
+ucisCBReturnT functional_callback(void* userdata, ucisCBDataT* cbdata) {
+
+  ucisScopeT scope = (ucisScopeT) (cbdata->obj);
+  ucisT db = cbdata->db;
+  char* name;
+  ucisCoverDataT coverdata;
+  ucisSourceInfoT sourceinfo;
+  struct dustate* du = &((struct dustate*) (userdata))[3];
+
+  static int current_bin_hits;
+  static int current_cvg_count;
+  static int current_cvp_count;
+  static int current_bin_count;
+
+  static int desired_cvg_index = -1;
+  static int desired_cvp_index = -1;
+  static int desired_bin_index = -1;
+
+  static int bin_count;
+  static int hit_bins;
+
+  static int total_cvps;
+  static int hit_count;
+
+  static string found_name;
+
+  static bool found_target = false;
+
+  static string old_cvg;
+  static string old_cvp;
+
+  switch (cbdata->reason) {
+  case UCIS_REASON_DU:
+    du->underneath = 1;
+    du->subscope_counter = 0;
+    break;
+  case UCIS_REASON_SCOPE:
+    if (du->underneath) {
+      du->subscope_counter++;
+    }
+    break;
+  case UCIS_REASON_ENDSCOPE:
+    if (du->underneath) {
+      if (du->subscope_counter)
+        du->subscope_counter--;
+      else
+        du->underneath = 0;
+    }
+    break;
+  case UCIS_REASON_CVBIN: {
+
+    scope = (ucisScopeT) (cbdata->obj);
+    /* Get coveritem data from scope and coverindex passed in: */
+    ucis_GetCoverData(db, scope, cbdata->coverindex, &name, &coverdata, &sourceinfo);
+
+    if (coverdata.type != UCIS_CVGBIN)
+      return UCIS_SCAN_CONTINUE;
+
+    if (du->underneath || name == NULL || name[0] == '\0') {
+      return UCIS_SCAN_PRUNE;
+    }
+
+    string hier_str(ucis_GetStringProperty(db, scope, -1, UCIS_STR_SCOPE_HIER_NAME));
+
+#ifdef QUESTA
+    if (hier_str.find("::") == string::npos)
+    return UCIS_SCAN_PRUNE;
+#endif
+
+    /* Coveritem has a name, use it: */
+#ifdef NCSIM
+    hier_str = hier_str.substr(0, hier_str.find_last_of('/'));
+#endif
+
+    int last = hier_str.find_last_of('/');
+    int almost_last = hier_str.find_last_of('/', last - 1);
+
+    string cvg_name = hier_str.substr(0, last);
+    string cvp_name = hier_str.substr(last + 1);
+    string bin_name = name;
+
+    if (cvg_name != old_cvg) {
+
+      if (desired_cvg_index != 0 && !found_target && current_cvg_count == desired_cvg_index) {
+        found_name = old_cvg;
+        hit_bins = current_bin_hits;
+        bin_count = current_bin_count;
+        found_target = true;
+      } else if (!found_target && total_cvps != 0 && total_cvps == desired_cvp_index
+          && desired_bin_index == -1) {
+        found_name = cvg_name + "/" + old_cvp;
+        hit_bins = current_bin_hits;
+        bin_count = current_bin_count;
+        found_target = true;
+      }
+
+      old_cvg = cvg_name;
+      old_cvp = cvp_name;
+
+      current_bin_count = 0;
+      current_bin_hits = 0;
+
+      current_cvp_count = 1;
+      current_cvg_count++;
+
+      total_cvps++;
+
+    } else if (cvp_name != old_cvp) {
+
+      if (!found_target && total_cvps == desired_cvp_index && desired_bin_index == -1) {
+        found_name = cvg_name + "/" + old_cvp;
+        hit_bins = current_bin_hits;
+        bin_count = current_bin_count;
+        found_target = true;
+      }
+
+      old_cvp = cvp_name;
+
+      current_bin_count = 0;
+      current_bin_hits = 0;
+
+      current_cvp_count++;
+      total_cvps++;
+    }
+
+    current_bin_count++;
+
+    if ((int) coverdata.data.int64)
+      current_bin_hits++;
+
+    if (!found_target && desired_bin_index == current_bin_count
+        && total_cvps == desired_cvp_index) {
+      found_name = bin_name;
+      hit_count = (int) coverdata.data.int64;
+      found_target = true;
+    }
+
+    break;
+  }
+  case UCIS_REASON_INITDB: {
+
+    char *cmd = ((char **) userdata)[0];
+    char *arg1 = ((char **) userdata)[1];
+    char *arg2 = ((char **) userdata)[2];
+
+    if (!strcmp(cmd, "cvg_name")) {
+      desired_cvg_index = atoi(arg1);
+    } else if (!strcmp(cmd, "cvp_name")) {
+      desired_cvp_index = atoi(arg1);
+    } else if (!strcmp(cmd, "bin_name")) {
+      desired_cvp_index = atoi(arg1);
+      desired_bin_index = atoi(arg2);
+    } else if (!strcmp(cmd, "cvg_res")) {
+      desired_cvg_index = atoi(arg1);
+    } else if (!strcmp(cmd, "cvp_res")) {
+      desired_cvp_index = atoi(arg1);
+    } else if (!strcmp(cmd, "nof_hits")) {
+      desired_cvp_index = atoi(arg1);
+      desired_bin_index = atoi(arg2);
+    } else if (!strcmp(cmd, "nof_bins")) {
+      desired_cvp_index = atoi(arg1);
+    }
+
+    break;
+  }
+  case UCIS_REASON_ENDDB: {
+
+    char *cmd = ((char **) userdata)[0];
+
+    // Treat some corner cases
+    if (desired_cvg_index == current_cvg_count) {
+      found_name = old_cvg;
+
+      hit_bins = current_bin_hits;
+      bin_count = current_bin_count;
+      found_target = true;
+    }
+
+    if (!found_target && desired_bin_index == -1 && desired_cvp_index == total_cvps) {
+      hit_bins = current_bin_hits;
+      bin_count = current_bin_count;
+      found_name = old_cvp;
+      found_target = true;
+    }
+
+    if (!strcmp(cmd, "nof_cvgs") || !strcmp(cmd, "nof_cvps")) {
+      found_target = true;
+    }
+
+    cout << "\t";
+
+    if (!found_target) {
+      print_red("Not found", cout);
+      cout << "\n";
+      return UCIS_SCAN_STOP;
+    }
+
+    if (!strcmp(cmd, "nof_cvgs")) {
+      cout << "Number of covergroups is [";
+      print_red(to_string(current_cvg_count), cout);
+      cout << "]\n";
+    } else if (!strcmp(cmd, "cvg_name") || !strcmp(cmd, "cvp_name") || !strcmp(cmd, "bin_name")) {
+      cout << "Name is [";
+      print_red(found_name, cout);
+      cout << "]\n";
+    } else if (!strcmp(cmd, "cvg_res") || !strcmp(cmd, "cvp_res")) {
+      cout << "Percent of hit bins [";
+      print_red(to_string(100.0 * hit_bins / bin_count), cout);
+      cout << "]\n";
+    } else if (!strcmp(cmd, "nof_cvps")) {
+      cout << "Number of coverpoints is [";
+      print_red(to_string(total_cvps), cout);
+      cout << "]\n";
+    } else if (!strcmp(cmd, "nof_hits")) {
+      cout << "The bin was hit [";
+      print_red(to_string(hit_count), cout);
+      cout << "] times\n";
+    } else if (!strcmp(cmd, "nof_bins")) {
+      cout << "The number of bins is [";
+      print_red(to_string(bin_count), cout);
+      cout << "]\n";
+    }
+
+    current_cvg_count = 0;
+    current_cvp_count = 0;
+    current_bin_count = 0;
+
+    desired_cvg_index = -1;
+    desired_cvp_index = -1;
+    desired_bin_index = -1;
+
+    bin_count = 0;
+    hit_bins = 0;
+
+    total_cvps = 0;
+    hit_count = 0;
+
+    found_name = "";
+
+    bool found_target = false;
+
+    string old_cvg = "";
+    string old_cvp = "";
+
+    break;
+  }
+  default:
+    break;
+  }
+  return UCIS_SCAN_CONTINUE;
+}
+
 /*
  * @brief Callback that searches for a scope in the UCISDB
  */
@@ -336,17 +662,19 @@ ucisCBReturnT map_callback(void* userdata, ucisCBDataT* cbdata) {
   char* name;
   ucisCoverDataT coverdata;
   ucisSourceInfoT sourceinfo;
+  static int nof_cvps = 1;
 
   switch (cbdata->reason) {
   case UCIS_REASON_DU:
-    /* Don't traverse data under a DU: see read-coverage2 */
+    /* Don't traverse data under a DU: see read-coverage */
     return UCIS_SCAN_PRUNE;
   case UCIS_REASON_CVBIN: {
     scope = (ucisScopeT) (cbdata->obj);
     /* Get coveritem data from scope and coverindex passed in: */
     ucis_GetCoverData(db, scope, cbdata->coverindex, &name, &coverdata, &sourceinfo);
 
-    if (!(coverdata.type & UCIS_CODE_COV))
+    if (!(coverdata.type & UCIS_CODE_COV || coverdata.type == UCIS_CVGBIN
+        || coverdata.type == UCIS_ASSERTBIN))
       return UCIS_SCAN_CONTINUE;
 
     if (coverdata.type == UCIS_TOGGLEBIN)
@@ -354,34 +682,100 @@ ucisCBReturnT map_callback(void* userdata, ucisCBDataT* cbdata) {
 
     string hier_str(ucis_GetStringProperty(db, scope, -1, UCIS_STR_SCOPE_HIER_NAME));
     string target((char *) userdata);
+    int cov_type = -1;
 
-    int seps = 0;
+    if (target == "cov")
+      cov_type = UCIS_CVGBIN;
+    if (target == "assert")
+      cov_type = UCIS_ASSERTBIN;
 
-    for (int i = 0; i < hier_str.size(); ++i)
-      if (hier_str[i] == '/')
-        seps++;
+    // Differentiate the code coverage and the functional coverage
+    if (coverdata.type & UCIS_CODE_COV) {
+      int seps = 0;
 
-    if (seps != longest_common) {
+      for (int i = 0; i < hier_str.size(); ++i)
+        if (hier_str[i] == '/')
+          seps++;
 
-      int hashtag = hier_str.find('#');
+      if (seps != longest_common) {
 
-      if (hashtag != string::npos) {
-        int last_sep = hier_str.find_last_of('/', hashtag);
-        hier_str = hier_str.substr(0, last_sep);
+        int hashtag = hier_str.find('#');
+
+        if (hashtag != string::npos) {
+          int last_sep = hier_str.find_last_of('/', hashtag);
+          hier_str = hier_str.substr(0, last_sep);
+        }
+
+        size_t it_start = hier_str.find(target);
+
+        if (hier_str.compare(old_scope) && it_start != string::npos && coverdata.type != UCIS_FSMBIN) {
+
+          cout << hier_str.substr(0, it_start);
+          print_red(hier_str.substr(it_start, target.size()), cout);
+          cout << hier_str.substr(it_start + target.size());
+          cout << "\n";
+          old_scope = hier_str;
+        }
+
+        longest_common = seps;
+      }
+    } else {
+      /* Process the string for display */
+#ifdef NCSIM
+      if (coverdata.type == UCIS_ASSERTBIN) {
+        int idx1, idx2;
+        string first, second;
+
+        idx1 = hier_str.find("::");
+        idx2 = hier_str.find(".");
+
+        first = hier_str.substr(0, idx1);
+        second = hier_str.substr(idx2 + 1);
+
+        hier_str = first + "/" + second;
       }
 
-      size_t it_start = hier_str.find(target);
+      if (coverdata.type == UCIS_CVGBIN) {
+        int idx;
+        string first, second;
 
-      if (hier_str.compare(old_scope) && it_start != string::npos && coverdata.type != UCIS_FSMBIN) {
+        idx = hier_str.find("::");
 
-        cout << hier_str.substr(0, it_start);
-        print_red(hier_str.substr(it_start, target.size()), cout);
-        cout << hier_str.substr(it_start + target.size());
-        cout << "\n";
-        old_scope = hier_str;
+        first = hier_str.substr(0, idx);
+        second = hier_str.substr(idx + 2);
+
+        hier_str = first + "/" + second;
       }
 
-      longest_common = seps;
+      if (coverdata.type == cov_type) {
+        cout << nof_cvps << ". " << hier_str << '\n';
+        nof_cvps ++;
+      }
+#endif
+#ifdef QUESTA
+      if (hier_str[0] == '/')
+      hier_str = hier_str.substr(1);
+
+      if (coverdata.type == UCIS_CVGBIN) {
+        int idx = hier_str.find("::");
+        if (idx == std::string::npos) {
+          if (coverdata.type == cov_type) {
+            hier_str += "/";
+            hier_str += name;
+
+            cout << nof_cvps << ". " << hier_str << '\n';
+            nof_cvps++;
+          }
+        }
+      }
+
+      if (coverdata.type == UCIS_ASSERTBIN) {
+        if (coverdata.type == cov_type) {
+          cout << nof_cvps << ". " << hier_str << '\n';
+          nof_cvps++;
+        }
+      }
+#endif
     }
 
     break;

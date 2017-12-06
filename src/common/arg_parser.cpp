@@ -27,7 +27,7 @@ static ofstream debug_log;
 static map<string, string> opt = { { "users", "u" }, { "plan", "p" }, { "refinement", "r" }, {
     "strict-comment", "sc" }, { "weak-comment", "wc" }, { "file", "f" }, { "database", "d" }, {
     "mail", "m" }, { "verbose", "v" }, { "check-file", "c" }, { "output", "o" }, { "list", "l" }, {
-    "testname", "t" }, { "quiet", "q" }, { "negate", "n" } };
+    "testname", "t" }, { "quiet", "q" }, { "negate", "n" }, {"coverage", "g"} };
 
 inline void semantic_err(const string &msg) {
   cerr << "*CL_ERR: Semantic error! ===> " << msg << "\n";
@@ -98,6 +98,7 @@ int check_option(const string &option) {
   }
 
   switch (option[1]) {
+  case 'g':
   case 'd':
   case 'p':
   case 'r':
@@ -206,6 +207,7 @@ int parse_option(vector<string> &argv, int &pos, vector<vector<string> > &info) 
   }
 
   int ret = 0;
+  int num_args;
 
   // Check validity
   if (check_option(argv[pos]))
@@ -215,6 +217,7 @@ int parse_option(vector<string> &argv, int &pos, vector<vector<string> > &info) 
   // Other commands support multiple args
   string arg_return;
   int old_pos = pos;
+  bool found = false;
 
   // See what opt we have
   switch (argv[pos][1]) {
@@ -237,6 +240,62 @@ int parse_option(vector<string> &argv, int &pos, vector<vector<string> > &info) 
       syntax_err("Only one arg for \"" + argv[pos - 2] + "\"!");
       ret = 3;
     }
+    break;
+  case 'g':
+    // Functional coverage option
+    ret = get_multiple_args(info[argv[pos][1] - 'a'], argv, pos);
+    num_args = info['g' - 'a'].size();
+    
+    if (num_args > 3) {
+      syntax_err("Too many arguments!");
+      ret = 3;
+    } else {
+      // no other arguments needed
+      if (info['g' - 'a'][0] == "nof_cvps" || info['g' - 'a'][0] == "nof_cvgs") {
+        found = true;
+
+        if (num_args > 1) {
+          syntax_err("Too many arguments!");
+          ret = 3;
+        }
+      }
+
+      //one argument needed
+      if (info['g' - 'a'][0] == "cvp_name" || info['g' - 'a'][0] == "nof_bins" ||
+          info['g' - 'a'][0] == "cvp_res" || info['g' - 'a'][0] == "cvg_name" ||
+          info['g' - 'a'][0] == "cvg_res") {
+        found = true;
+
+        if (num_args <= 1) {
+          syntax_err("Index of the coverpoint needed!");
+          ret = 3;
+        }
+
+        if (num_args > 2) {
+          syntax_err("Too many arguments!");
+          ret = 3;
+        }
+      }
+
+      // two arguments needed
+      if (info['g' - 'a'][0] == "bin_name" || info['g' - 'a'][0] == "nof_hits") {
+        found = true;
+
+        if (num_args <= 2) {
+          syntax_err("Indexes for the coverpoint and bin needed!");
+          ret = 3;
+        }
+      }
+
+      if (found == false) {
+        syntax_err("Command not recognized!");
+        ret = 3;
+      }
+    }
+
+
+    pos++;
+
     break;
     // Any number of args options
   case 'w':
@@ -369,7 +428,7 @@ int arg_main(int argc, char** argv, vector<vector<string> > &infos) {
   }
 
   if (infos['l' - 'a'].empty())
-    if (infos['r' - 'a'].empty() && infos['c' - 'a'].empty()) {
+    if (infos['r' - 'a'].empty() && infos['c' - 'a'].empty() && infos['g' - 'a'].empty()) {
       semantic_err("No code specified!");
       return 3;
     }

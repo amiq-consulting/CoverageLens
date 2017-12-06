@@ -73,7 +73,8 @@ void top_tree::run_check(const string &query, int64_t cov_val, const node_info_t
       ret->found = true;
 
       ret->inf->line = inf.line;
-      ret->inf->name = inf.name;
+      if (ret->inf->name == "")
+        ret->inf->name = inf.name;
       ret->inf->found = true;
       ret->inf->hit_count += cov_val;
 
@@ -85,6 +86,7 @@ void top_tree::run_check(const string &query, int64_t cov_val, const node_info_t
 
   if (select & 2) {
     ret = this->du_tr->find(query);
+
     if (ret != NULL) {
       ret->times_hit += cov_val;
       ret->found = true;
@@ -162,6 +164,7 @@ void top_tree::run_check(const vector<string> &params, const int64_t cov_val,
 
   if (ret) {
     top_tree_log << "\t==> DU HIT\n";
+
     ret->found = true;
     ret->times_hit += cov_val;
 
